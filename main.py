@@ -15,6 +15,7 @@ Model serving with model id saved with client id.
 """
 import flask
 import time
+from utils import notify_msg
 
 app = flask.Flask(__name__)
 
@@ -95,10 +96,16 @@ def trainingModel():
 
         # Close the connection
         conn.close()
+        notify_msg("model called POST")
+
         return data
     if flask.request.method == "GET":
         print(flask.request)
+
+
         data = flask.request.get_json()
+        notify_msg("model called GET {}".format(str(data)))
+
         # do something with the data
         modelReference = data.get("input",{"LOL":"LOL"}).get("modelReference", 1)
         print(data, modelReference)
@@ -134,6 +141,7 @@ def trainingModel():
                 print(jsonify(results[0][0]))#W#['intercept'])
                 jsonify(data)
                 # return data
+                notify_msg("model called v0")
                 return jsonify(results[0])
 
 
