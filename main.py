@@ -1,6 +1,6 @@
 """
 JSON based data saving in sqlite db and retrieval of sqlite data.
-    Sept 16, 2023.
+    Oct 17, 2023.
     Work towards ALX profolio project
 
 Model serving with model id saved with client id.
@@ -16,90 +16,175 @@ Model serving with model id saved with client id.
 import flask
 import time
 from utils import notify_msg
+from flask import jsonify
+import json
+import numpy as np
+import sqlite3
+from sklearn.linear_model import LinearRegression
+from flask import request, jsonify, session
 
 app = flask.Flask(__name__)
 
-import sqlite3
-import json
+app.secret_key = 'your_secret_key'  # Change to a secure secret key in production
 
-from flask import jsonify
-import numpy as np
-from sklearn.linear_model import LinearRegression
-conn = sqlite3.connect('mydatabase.sqlite')
 
-c = conn.cursor()
+# User data 
+users = {
+    "1": {"password": "password1", "credits": 100},
+    "2": {"password": "password2", "credits": 3},
+    "4": {"password": "password4", "credits": 500},
+    "5": {"password": "password5", "credits": 0}
+}
 
-# Create a table
-# c.execute("DROP TABLE IF EXISTS mytable2")
-c.execute('CREATE TABLE IF NOT EXISTS mytable2 (id INTEGER PRIMARY KEY, REF TEXT, data BLOB)')
-# binary_data = b'38434'
-# ref = 1
-# # Insert binary data into the column
-# c.execute('INSERT INTO mytable2 (REF, data) VALUES (?,?)', (1, binary_data,))
+# Credit keys 
+keys = {
+    "34213": 10,
+    "fher3": 1,
+    "3434": 20
+}
 
-# Commit the changes to the database
-conn.commit()
+# Models 
+models = {
+    "3433r": lambda x: x ** 2,
+    "3434": lambda y: y - 2
+}
 
-# Close the connection
-conn.close()
-# connect to the databa
+# Function to check if the user is logged in
+def is_logged_in():
+    return 'user' in session
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-    """
-    This project entry point. Would have links to other end points or call them.
-    to be implemented further
-    """
-    if flask.request.method == "POST":
-        data = flask.request.get_json()
-        # do something with the data
-        return data
+    if is_logged_in():
+        return f"Hello, {session['user']}!"
     return "Hello, World!"
 
+@app.route("/register", methods=["POST"])
+def register():
+    if is_logged_in():
+        return "Already logged in."
 
-@app.route("/train", methods=["GET", "POST"])
-def trainingModel():
-    """
-    Post -> model training data, for now there is one model. List of models and input, 
-    output structures can be list in advanced implementation
-    """
-    if flask.request.method == "POST":
+    data = request.get_json()
+    username = data.get("username")
+    password = data.get("password")
+
+    if username in users:
+        return "User already exists."
+
+    users[username] = {"password": password, "credits": 0}
+    session['user'] = username
+
+    return f"Registration successful, {username}!"
+
+@app.route("/login", methods=["POST"])
+def login():
+    if is_logged_in():
+        return "Already logged in."
+
+    data = request.get_json()
+    username = data.get("username")
+    password = data.get("password")
+
+    if username in users and users[username]["password"] == password:
+        session['user'] = username
+        return f"Login successful, {username}."
+    else:
+        return "Login failed."
+
+@app.route("/logout", methods=["GET"])
+def logout():
+    if is_logged_in():
+        username = session['user']
+        session.pop('user', None)
+        return f"Logged out, {username}!"
+    return "Not logged in."
+
+@app.route("/credits/increase/<key>", methods=["POST"])
+def credit_increase(key):
+    user = session.get('user')
+    if not user:
+        return "Login required."
+
+    credit_up = keys.get(key, 0)
+    if user in users:
+        users[user]["credits"] += credit_up
+        return f"New Balance: {users[user]['credits']}"
+
+@app.route("/credits/status")
+def credit_check():
+    user = session.get('user')
+    if not user:
+        return "Login required."
+
+    if user in users:
+        return f"Remaining Credits: {users[user]['credits']}"
+
+@app.route("/models/all")
+def model_list():
+    user = session.get('user')
+    if not user:
+        return "Login required."
+
+    if rate_limit(user):
+        model_references = list(models.keys())
+        return jsonify(model_references)
+    else:
+        return "Insufficient credits to access this endpoint."
+
+@app.route("/train", methods=["POST"])
+def training_data():
+    user = session.get('user')
+    if not user:
+        return "Login required."
+
+    if rate_limit(user):
         current_time = time.time()
         conn = sqlite3.connect('mydatabase.sqlite')
 
         c = conn.cursor()
 
-        data = flask.request.get_json()
-        # do something with the data
+        data = request.get_json()
+
         X = data['input']['x']
         Y = data['input']['y']
-
         INPUT = np.array([X, Y]).T
         Z = data['output']['VL']
-        output = np.array(Z).reshape(-1,1)
+        output = np.array(Z).reshape(-1, 1)
         newData = {}
-        data = newData
+
         reg = LinearRegression().fit(INPUT, output)
         data['input_shape'] = INPUT.shape
         data['output_shape'] = output.shape
         data['intercept'] = reg.intercept_.tolist()
-        data['score'] = str(reg.score(INPUT,output))
-        data['coeff'] =reg.coef_.tolist()
-        
-        data['time'] = current_time
-        data['modelReference'] =  hash(str(data))
+        data['score'] = str(reg.score(INPUT, output))
+        data['coeff'] = reg.coef_.tolist()
+
+        data['modelReference'] = hash(str(data))
         data['trained'] = True
-        c.execute('INSERT INTO mytable2 (REF, data) VALUES (?,?)', (     data['modelReference'],json.dumps(data),))
 
-        # Commit the changes to the database
+        c.execute('INSERT INTO mytable2 (REF, data) VALUES (?, ?)', (data['modelReference'], json.dumps(data),))
         conn.commit()
-
-        # Close the connection
         conn.close()
-        notify_msg("model called POST")
+        notify_msg("Model trained and POSTed")
 
         return data
-    if flask.request.method == "GET":
+    else:
+        return "Insufficient credits to access this endpoint."
+
+
+@app.route("/test", methods=["GET"])
+def test_data():
+    user = session.get('user')
+    if not user:
+        return "Login required."
+
+    if rate_limit(user):
+        current_time = time.time()
+        conn = sqlite3.connect('mydatabase.sqlite')
+
+        c = conn.cursor()
+
+        data = request.get_json()
         print(flask.request)
 
 
@@ -151,7 +236,39 @@ def trainingModel():
             return (data)
 
         return "Hello, World!"
+    else:
+        return "Insufficient credits to access this endpoint."
 
+@app.route("/models/run/<model_id>", methods=["GET"])
+def execute_request(model_id):
+    user = session.get('user')
+    if not user:
+        return "Login required."
+
+    if rate_limit(user):
+        model = models.get(model_id)
+        if model:
+            input_data = 5
+            result = model(input_data)
+            return f"Result: {result}"
+        else:
+            return "Model not found."
+    else:
+        return "Insufficient credits to access this endpoint."
+
+def rate_limit(user):
+    if user in users and users[user]["credits"] > 0:
+        users[user]["credits"] -= 1
+        return True
+    else:
+        return False
+
+def decrease_credits(user, n):
+    if user in users:
+        users[user]["credits"] -= n
+        remaining = users[user]["credits"]
+        valid = remaining >= 0
+        return {"remaining": remaining, "valid": valid}
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, port=5001)
