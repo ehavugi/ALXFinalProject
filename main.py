@@ -24,7 +24,7 @@ import sqlite3
 from sklearn.linear_model import LinearRegression
 from flask import request, jsonify, session
 import os
-
+import sys
 app = flask.Flask(__name__)
 
 app.secret_key = 'your_secret_key'  # Change to a secure secret key in production
@@ -273,5 +273,8 @@ def decrease_credits(user, n):
         return {"remaining": remaining, "valid": valid}
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
-
+    num_args = len(sys.argv)
+    if num_args<=1:
+        app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+    else:
+        app.run(debug=False, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
