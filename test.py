@@ -13,7 +13,7 @@ import json
 session = requests.Session()
 
 # Define the base URL 
-base_url = "http://127.0.0.1:5001"
+base_url = "http://127.0.0.1:8080"
 
 # Registration and login payload
 payload = {

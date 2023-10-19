@@ -1,7 +1,8 @@
+#!/usr/bin/python
 """
 JSON based data saving in sqlite db and retrieval of sqlite data.
     Oct 17, 2023.
-    Work towards ALX profolio project
+    Work towards ALX profolio project 
 
 Model serving with model id saved with client id.
 
@@ -22,6 +23,7 @@ import numpy as np
 import sqlite3
 from sklearn.linear_model import LinearRegression
 from flask import request, jsonify, session
+import os
 
 app = flask.Flask(__name__)
 
@@ -271,4 +273,5 @@ def decrease_credits(user, n):
         return {"remaining": remaining, "valid": valid}
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5001)
+    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
