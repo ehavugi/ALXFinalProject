@@ -59,7 +59,7 @@ def is_logged_in():
 def index():
     if is_logged_in():
         return f"Hello, {session['user']}!"
-    return "Hello, World!"
+    return "Not login, need to login /login or first register at /register"
 
 @app.route("/register", methods=["POST"])
 def register():
@@ -73,7 +73,7 @@ def register():
     if username in users:
         return "User already exists."
 
-    users[username] = {"password": password, "credits": 0}
+    users[username] = {"password": password, "credits": 10}
     session['user'] = username
 
     return f"Registration successful, {username}!"
