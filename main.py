@@ -27,7 +27,26 @@ import os
 import sys
 app = flask.Flask(__name__)
 
-app.secret_key = 'your_secret_key'  # Change to a secure secret key in production
+app.secret_key = 'UHXMU'  # Change to a secure secret key in production
+
+conn = sqlite3.connect('mydatabase.sqlite')
+
+c = conn.cursor()
+
+# Create a table
+# c.execute("DROP TABLE IF EXISTS mytable2")
+c.execute('CREATE TABLE IF NOT EXISTS mytable2 (id INTEGER PRIMARY KEY, REF TEXT, data BLOB)')
+# binary_data = b'38434'
+# ref = 1
+# # Insert binary data into the column
+# c.execute('INSERT INTO mytable2 (REF, data) VALUES (?,?)', (1, binary_data,))
+
+# Commit the changes to the database
+conn.commit()
+
+# Close the connection
+conn.close()
+# connect to the databa
 
 
 # User data 
